@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { TextField, Button, Paper, Stack, Typography } from "@mui/material";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebase";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "../hooks/useToast.js";
 
 const ADMIN_EMAIL = "admin@gmail.com";
 const ADMIN_PASSWORD = "admin123"; // sida Flutter-ka looga gudbayo
@@ -13,21 +12,38 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const nav = useNavigate();
+  const { showToast } = useToast();
 
   const doLogin = async () => {
     setErr("");
     setLoading(true);
+    
     try {
-      // Haddii la rabo bypass admin sida Flutter:
+      // Check if credentials match admin constants
       if (email.trim() === ADMIN_EMAIL && pass.trim() === ADMIN_PASSWORD) {
-        // samee anonymous sign-in ama isticmaal email/password kan oo hore u diiwaangashan
-        await signInWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD)
-          .catch(()=>Promise.resolve()); // haddii aadan rabin auth dhab ah
-        return nav("/dashboard", { replace: true });
+        // Set session storage to mark user as logged in
+        sessionStorage.setItem("adminLoggedIn", "true");
+        // Show success toast and redirect to dashboard
+        showToast("Login successful! Welcome to Admin Dashboard", "success");
+        setTimeout(() => {
+          nav("/dashboard", { replace: true });
+          setLoading(false);
+        }, 1000); // Small delay to show toast before redirect
+        return;
       }
-      // Haddii kale, auth caadi ah:
-      await signInWithEmailAndPassword(auth, email, pass);
-      nav("/dashboard", { replace: true });
+      
+      // Check if user entered something but it's not the correct admin credentials
+      if (email.trim() !== "" && pass.trim() !== "") {
+        setErr("Invalid email or password");
+        return;
+      }
+      
+      // If fields are empty
+      if (email.trim() === "" || pass.trim() === "") {
+        setErr("Please enter email and password");
+        return;
+      }
+      
     } catch (e) {
       setErr(e.message || "Login failed");
     } finally {
